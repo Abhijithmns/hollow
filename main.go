@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"syscall"
 )
 
@@ -41,6 +43,8 @@ func run() {
 func child() {
 	fmt.Printf("Running %v as %d\n", os.Args[2:], os.Getpid())
 
+	cg()
+
 	syscall.Sethostname([]byte("hollow"))
 	must(syscall.Chroot("./rootfs"))
 	syscall.Chdir("/")
@@ -56,7 +60,22 @@ func child() {
 	syscall.Unmount("proc", 0)
 }
 
+// cgroups v2
+func cg() {
+	cgroups := "/sys/fs/cgroup/"
+	pids := filepath.Join(cgroups, "")
+	err := os.Mkdir(filepath.Join(pids,"hollow"), 0755)
 
+	if err != nil {
+		panic(err)
+	}
+
+	must(os.WriteFile(filepath.Join(pids, "hollow/pids.max"), []byte("20"), 0700))
+
+	must(os.WriteFile(filepath.Join(pids, "hollow/cgroup.procs"), []byte(strconv.Itoa(os.Getpid())), 0700))
+	
+
+}
 
 func must(err error) {
 	if err != nil {
