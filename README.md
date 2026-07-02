@@ -3,7 +3,7 @@
 ## Todos
 
 - [x] Building the CLI interface for a container runtime
-- [ ] Reading a bundle config and saving a containers state
+- [x] Reading a bundle config and saving a containers state
 - [ ] Loading a container, getting its state, and deleting it
 - [ ] Initialising a container and starting the user process
 - [ ] Executing container runtime lifecycle hooks
