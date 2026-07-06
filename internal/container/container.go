@@ -3,7 +3,9 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -11,6 +13,8 @@ import (
 
 const (
 	containerRootDir = "/var/lib/hollow/containers"
+	initSockFilename = "init.sock" // file names of the sockets will be used for IPC
+	containerSockFilename = "container.sock"
 )
 
 type Container struct {
@@ -111,6 +115,59 @@ func (c *Container) Delete(force bool) error {
 		return fmt.Errorf("delete container directory: %w", err)
 	}
 
+	return nil
+
+}
+
+func (c *Container) Init() error {
+	// refer notes
+	// 2. TODO : configure container
+
+	// 3.create ipc socket
+	listner, err := net.Listen("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
+	if err != nil {
+		return fmt.Errorf("create ipc socket : %w", err)
+	}
+	defer listner.Close()
+
+	// 5. re exec
+	cmd := exec.Command("/proc/self/exe", "reexec", c.State.ID)
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("reexec container process: %w", err)
+	}
+	
+	c.State.Pid = cmd.Process.Pid
+
+	// 6. relese container process
+	if err := cmd.Process.Release(); err != nil {
+		return fmt.Errorf("release container process: %w", err)
+	}
+
+	// 4. listen
+	conn, err := listner.Accept()
+	if err != nil {
+		return fmt.Errorf("accept on init sock: %w", err)
+	}
+	defer conn.Close()
+
+	b := make([]byte, 128)
+	n, err := conn.Read(b)
+	if err != nil {
+		return fmt.Errorf("read bytes form the init.sock connection: %w", err)
+	}
+
+	// 10. receive ready
+	msg := string(b[:n])
+	if msg != "ready" {
+		return fmt.Errorf("expecting 'ready' but received '%s'",msg)
+	}
+
+	// 11. exit
 	return nil
 
 }
