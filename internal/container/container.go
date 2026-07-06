@@ -27,7 +27,7 @@ type NewContainerOpts struct {
 // create a new cont
 func New(opts *NewContainerOpts) (*Container, error) {
 	if exists(opts.ID) {
-		return nil, fmt.Errorf("container %s exists\n", opts.ID)
+		return nil, fmt.Errorf("container '%s' exists\n", opts.ID)
 	}
 
 	state := specs.State {
@@ -68,6 +68,55 @@ func (c *Container) Save() error {
 		return fmt.Errorf("Writing container state : %w", err)
 	}
 	return nil
+}
+
+func Load(id string) (*Container, error) {
+	s, err := os.ReadFile(
+		filepath.Join(containerRootDir, id, "state.json"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Read state file: %w" , err)
+	}
+	var state *specs.State
+	if err := json.Unmarshal(s, &state); err != nil {
+		return nil, fmt.Errorf("unmarshall state: %w", err)
+	}
+
+	config, err := os.ReadFile(
+		filepath.Join(state.Bundle, "config.json"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Read config file: %w", err)
+	}
+	var spec *specs.Spec
+	if err := json.Unmarshal(config, &spec); err!= nil {
+		return nil, fmt.Errorf("unmarshall config: %w", err)
+	}
+
+	c := &Container{
+		State: state,
+		Spec: spec,
+	}
+	return c, nil
+}
+
+func (c *Container) Delete(force bool) error {
+	if !force && !c.canBeDeleted() {
+		return fmt.Errorf("container cannot be deleted in its current state (%s) try using --force", c.State.Status)
+	}
+
+	if err := os.RemoveAll(
+		filepath.Join(containerRootDir, c.State.ID),
+	); err != nil {
+		return fmt.Errorf("delete container directory: %w", err)
+	}
+
+	return nil
+
+}
+
+func (c *Container) canBeDeleted() bool {
+	return c.State.Status == specs.StateStopped
 }
 
 func exists(ContainerID string) bool {

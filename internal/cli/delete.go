@@ -14,10 +14,17 @@ func deleteCmd() *cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			containerID := args[0]
 
+			force , err != cmd.Flags().GetBool("force")
+			if err != nil {
+				return err
+			}
+
 			return operations.Delete(&operations.DeleteOpts{
 				ID : containerID,
+				Force: force,
 			})
 		},
 	}
+	cmd.Flags().BoolP("force", "f", false, "Delete container regardless of the state")
 	return cmd
 }
