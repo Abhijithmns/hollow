@@ -5,7 +5,7 @@
 - [x] Building the CLI interface for a container runtime
 - [x] Reading a bundle config and saving a containers state
 - [x] Loading a container, getting its state, and deleting it
-- [ ] Initialising a container and starting the user process
+- [x] Initialising a container and starting the user process
 - [ ] Executing container runtime lifecycle hooks
 - [ ] Sending signals to a running container using ‘kill’
 - [ ] Setting up the OCI Runtime Spec test suite
