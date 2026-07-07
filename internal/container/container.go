@@ -172,6 +172,34 @@ func (c *Container) Init() error {
 
 }
 
+func (c *Container) Reexec() error {
+	// TODO : 7. configure container
+
+	// 8. send 'ready'
+	initConn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
+	if err != nil {
+		return fmt.Errorf("dial init.sock: %w", err)
+	}
+
+	if _, err := initConn.Write([]byte("ready")); err != nil {
+		return fmt.Errorf("Failed writing 'ready' : %w", err)
+	}
+	// close the connecting insted of defering
+	initConn.Close()
+
+	listner, err := net.Listen("unix", filepath.Join(containerRootDir, c.State.ID, containerSockFilename))
+	if err != nil {
+		return fmt.Errorf("Listen container.sock : %w", err)
+	}
+
+	// 9. listen for start
+	contConn, err := listner.Accept()
+	if err != nil {
+		return fmt.Errorf("Accept container.sock: %w", err)
+	}
+
+}
+
 func (c *Container) canBeDeleted() bool {
 	return c.State.Status == specs.StateStopped
 }

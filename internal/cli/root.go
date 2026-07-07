@@ -17,6 +17,7 @@ func RootCmd() *cobra.Command {
 		deleteCmd(),
 		killCmd(),
 		createCmd(),
+		reexecCmd(),
 	)
 	return cmd
 }

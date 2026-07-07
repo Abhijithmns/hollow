@@ -49,5 +49,13 @@ func Create(opts *CreateOpts) error {
 	if err := cont.Save(); err != nil {
 		return fmt.Errorf("Save container : %w", err)
 	}
+
+	if err := cont.Init(); err != nil {
+		return fmt.Errorf("Failed to init container: %w", err);
+	}
+
+	if err := cont.Save(); err != nil {
+		return fmt.Errorf("Failed to save the container: %w", err)
+	}
 	return nil
 }
