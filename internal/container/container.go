@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -197,8 +198,35 @@ func (c *Container) Reexec() error {
 	if err != nil {
 		return fmt.Errorf("Accept container.sock: %w", err)
 	}
+	
+	b := make([]byte, 128)
+	n , err :=  contConn.Read(b)
+	if err != nil {
+		return fmt.Errorf("Read bytes from container sock: %w", err)
+	}
 
+	msg := string(b[:n])
+	if msg != "start" {
+		return fmt.Errorf("expecting 'start' but received '%s' ", msg)
+	}
+	// close before exec'ing the user process
+	contConn.Close()
+	listner.Close()
+
+	binary , err := exec.LookPath(c.Spec.Process.Args[0])
+	if err != nil {
+		return fmt.Errorf("Unable to find path of user binary : %w", err)
+	}
+
+	args := c.Spec.Process.Args
+	env := os.Environ()
+	
+	if err := syscall.Exec(binary, args, env); err != nil {
+		return fmt.Errorf("execve(%s , %s , %v ) : %w", binary, args, env, err)
+	}
+	panic("something went wrong") // if you got here something went horribly wrong
 }
+
 
 func (c *Container) canBeDeleted() bool {
 	return c.State.Status == specs.StateStopped
