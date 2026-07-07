@@ -179,6 +179,8 @@ func (c *Container) Init() error {
 		return fmt.Errorf("expecting 'ready' but received '%s'",msg)
 	}
 
+	c.State.Status = specs.StateCreated
+	
 	// 11. exit
 	return nil
 
