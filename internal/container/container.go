@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Abhijithmns/hollow/internal/hooks"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
@@ -127,13 +128,30 @@ func (c *Container) Delete(force bool) error {
 		return fmt.Errorf("delete container directory: %w", err)
 	}
 
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.Poststop, c.State); err != nil {
+			return fmt.Errorf("exec poststop hook: %w", err)
+		}
+	}
+
 	return nil
 
 }
 
 func (c *Container) Init() error {
 	// refer notes
-	// 2. TODO : configure container
+	// . TODO : configure container
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.CreateRuntime, c.State); err != nil {
+			return fmt.Errorf("exec CreateRuntime hook: %w", err)
+		}
+	}
+	// . re exec
+	cmd := exec.Command("/proc/self/exe", "reexec", c.State.ID)
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	// 3.create ipc socket
 	listner, err := net.Listen("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
@@ -142,12 +160,12 @@ func (c *Container) Init() error {
 	}
 	defer listner.Close()
 
-	// 5. re exec
-	cmd := exec.Command("/proc/self/exe", "reexec", c.State.ID)
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.CreateContainer, c.State); err != nil {
+			return fmt.Errorf("exec CreateContainer hook: %w", err)
+		}
+	}
 
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("reexec container process: %w", err)
@@ -155,7 +173,7 @@ func (c *Container) Init() error {
 	
 	c.State.Pid = cmd.Process.Pid
 
-	// 6. relese container process
+	// . relese container process
 	if err := cmd.Process.Release(); err != nil {
 		return fmt.Errorf("release container process: %w", err)
 	}
@@ -226,6 +244,12 @@ func (c *Container) Reexec() error {
 	contConn.Close()
 	listner.Close()
 
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.StartContainer, c.State); err != nil {
+			return fmt.Errorf("exec StartContainer hook: %w", err)
+		}
+	}
+
 	binary , err := exec.LookPath(c.Spec.Process.Args[0])
 	if err != nil {
 		return fmt.Errorf("Unable to find path of user binary : %w", err)
@@ -250,6 +274,13 @@ func (c *Container) Start() error {
 		return fmt.Errorf("container cannot be started in current state (%s)", c.State.Status)
     }
 
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.Prestart, c.State); err != nil {
+			// prestart hook is deprecated but idk why its still required by the OCI runtime tests and other tools like docker
+			return fmt.Errorf("exec prestart hook: %w", err)
+		}
+	}
+
     conn, err := net.Dial("unix",filepath.Join(containerRootDir, c.State.ID, containerSockFilename),)
     if err != nil {
 		return fmt.Errorf("dial container sock: %w", err)
@@ -261,6 +292,12 @@ func (c *Container) Start() error {
     conn.Close()
 
     c.State.Status = specs.StateRunning
+
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.Poststart, c.State); err != nil {
+			return fmt.Errorf("exec poststart hook : %w", err)
+		}
+	}
 
     return nil
 }
