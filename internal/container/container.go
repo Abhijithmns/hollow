@@ -302,12 +302,35 @@ func (c *Container) Start() error {
     return nil
 }
 
+func (c *Container) Kill(sig unix.Signal) error {
+	if !c.canBeKilled() {
+		return fmt.Errorf("container cannot be killed in current state(%s) ", c.State.Status)
+	}
+
+	if err := syscall.Kill(c.State.Pid, sig); err != nil {
+		return fmt.Errorf("send signal '%s' to process '%d' : %w", sig, c.State.Pid, err)
+	}
+
+	c.State.Status = specs.StateStopped
+
+	if c.Spec.Hooks != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.Poststart,c.State); err != nil {
+			return fmt.Errorf("Warning: failed to execute poststop hooks !")
+		}
+	}
+	return nil 
+}
+
 func (c *Container) canBeDeleted() bool {
 	return c.State.Status == specs.StateStopped
 }
 
 func (c *Container) canBeStarted() bool {
 	return c.State.Status == specs.StateCreated
+}
+
+func (c *Container) canBeKilled() bool {
+	return c.State.Status == specs.StateCreated || c.State.Status == specs.StateRunning
 }
 
 func exists(ContainerID string) bool {
