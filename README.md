@@ -7,8 +7,8 @@
 - [x] Loading a container, getting its state, and deleting it
 - [x] Initialising a container and starting the user process
 - [x] Executing container runtime lifecycle hooks -- partial for now (order them properly)
-- [ ] Sending signals to a running container using ‘kill’
-- [ ] Setting up the OCI Runtime Spec test suite
+- [x] Sending signals to a running container using ‘kill’
+- [ ] Setting up the OCI Runtime Spec test suite (do it later)
 - [ ] Isolating the container process using namespaces
 - [ ] Managing container resources using cgroups & rlimits
 - [ ] Set up the root filesystem (rootfs) of a container
