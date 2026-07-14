@@ -13,7 +13,7 @@ a simple oci-compliant container runtime written in go for learning how containe
 - [x] execute oci lifecycle hooks *(partial)*
 
 ### process isolation
-- [ ] implement linux namespaces
+- [x] implement linux namespaces
 - [ ] configure the root filesystem
 - [ ] configure mounts
 - [ ] set the hostname and domain name

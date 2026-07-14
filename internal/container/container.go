@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/Abhijithmns/hollow/internal/hooks"
+	"github.com/Abhijithmns/hollow/internal/namespace"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
@@ -166,6 +167,12 @@ func (c *Container) Init() error {
 		}
 	}
 
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	flags, err := namespace.CloneFlags(c.Spec)
+	if err != nil {
+		return fmt.Errorf("some shit went wrong with cloneflags")
+	}
+	cmd.SysProcAttr.Cloneflags = flags
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("reexec container process: %w", err)
