@@ -13,8 +13,8 @@ func CloneFlags(spec *specs.Spec) (uintptr, error) {
 	}
 	var flags uintptr
 	for _,ns := range spec.Linux.Namespaces {
-		if ns.Path == "" {
-			// do something
+		if ns.Path != "" {
+			// has a path -> join target, defer to setns phase, skip for now
 			continue
 		}
 		flag, ok := NamespaceFlags[ns.Type]
