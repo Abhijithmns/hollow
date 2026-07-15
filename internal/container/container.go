@@ -212,7 +212,11 @@ func (c *Container) Init() error {
 }
 
 func (c *Container) Reexec() error {
-	// TODO : 7. configure container
+	if c.Spec.Hostname != "" {
+		if err := unix.Sethostname([]byte(c.Spec.Hostname)); err != nil {
+			return fmt.Errorf("set hostname: %w", err)
+		}
+	}
 
 	// 8. send 'ready'
 	initConn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
