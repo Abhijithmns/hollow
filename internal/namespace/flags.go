@@ -8,7 +8,7 @@ import (
 
 func CloneFlags(spec *specs.Spec) (uintptr, error) {
 	// no namespaces in config.json
-	if spec.Linux == nil || spec == nil {
+	if  spec == nil || spec.Linux == nil {
 		return 0, fmt.Errorf("no namespaces mentioned in 'config.json' ")
 	}
 	var flags uintptr
