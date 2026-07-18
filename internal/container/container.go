@@ -213,21 +213,28 @@ func (c *Container) Init() error {
 }
 
 func (c *Container) Reexec() error {
+	// dail + listen before pivot_root before host paths are still reachable
+	initConn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
+	if err != nil {
+		return fmt.Errorf("dial init.sock: %w", err)
+	}
+
+	listner, err := net.Listen("unix", filepath.Join(containerRootDir, c.State.ID, containerSockFilename))
+	if err != nil {
+		return fmt.Errorf("Listen container.sock : %w", err)
+	}
+
 	rootfsPath := filepath.Join(c.State.Bundle, c.Spec.Root.Path)
 	if err := rootfs.Pivotroot(rootfsPath); err != nil {
 		return fmt.Errorf("configure rootfs: %w", err)
 	}
+
 	if c.Spec.Hostname != "" {
 		if err := unix.Sethostname([]byte(c.Spec.Hostname)); err != nil {
 			return fmt.Errorf("set hostname: %w", err)
 		}
 	}
 
-	// 8. send 'ready'
-	initConn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
-	if err != nil {
-		return fmt.Errorf("dial init.sock: %w", err)
-	}
 
 	if _, err := initConn.Write([]byte("ready")); err != nil {
 		return fmt.Errorf("Failed writing 'ready' : %w", err)
@@ -235,10 +242,6 @@ func (c *Container) Reexec() error {
 	// close the connecting insted of defering
 	initConn.Close()
 
-	listner, err := net.Listen("unix", filepath.Join(containerRootDir, c.State.ID, containerSockFilename))
-	if err != nil {
-		return fmt.Errorf("Listen container.sock : %w", err)
-	}
 
 	// 9. listen for start
 	contConn, err := listner.Accept()
