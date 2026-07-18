@@ -11,8 +11,14 @@ import (
 // this switches the calling process's root filesystem into new_root
 // it MUST be called  from a process with an active mount namespace
 func Pivotroot(new_root string) error {
-	// make new_root a mount point itself(pivot_root  requires this)
+	// make all mounts private to our namespace first
+	// shared mount propagation (systemd sets root as MS_SHARED by default)
+	if err := unix.Mount("", "/", "", unix.MS_PRIVATE | unix.MS_REC, ""); err != nil {
+		return fmt.Errorf("make mounts private: %w", err)
+	}
 
+
+	// make new_root a mount point itself(pivot_root  requires this)
 	if err := unix.Mount(new_root, new_root, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
 		return fmt.Errorf("bind mount to new root: %w", err)
 	}
