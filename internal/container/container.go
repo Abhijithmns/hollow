@@ -11,6 +11,7 @@ import (
 
 	"github.com/Abhijithmns/hollow/internal/hooks"
 	"github.com/Abhijithmns/hollow/internal/namespace"
+	"github.com/Abhijithmns/hollow/internal/rootfs"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
@@ -212,6 +213,10 @@ func (c *Container) Init() error {
 }
 
 func (c *Container) Reexec() error {
+	rootfsPath := filepath.Join(c.State.Bundle, c.Spec.Root.Path)
+	if err := rootfs.Pivotroot(rootfsPath); err != nil {
+		return fmt.Errorf("configure rootfs: %w", err)
+	}
 	if c.Spec.Hostname != "" {
 		if err := unix.Sethostname([]byte(c.Spec.Hostname)); err != nil {
 			return fmt.Errorf("set hostname: %w", err)
