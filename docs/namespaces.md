@@ -21,8 +21,8 @@ for the ones mentioned in the runtime-spec
 
  Also Linux Namespaces are thread scoped
  Because Go is a multi-threaded runtime, calling  setns(2)  or  unshare(2)  directly within a running Go process is not supported/reliable, since those system calls apply only to the
-  calling thread. The project solves this using a C dynamic linker constructor ( __attribute__((constructor)) ) in a c file via cgo. The package is blank-imported in
-  main.go so it executes before the Go runtime initializes.
+  calling thread. This is solvedusing a C dynamic linker constructor ( __attribute__((constructor)) ) in a c file via `cgo`
+ 
 
 So at this exact moment:
   1. The process is single-threaded (only the main thread exists).
