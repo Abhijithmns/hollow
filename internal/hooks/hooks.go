@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,8 @@ func ExecHooks(hooks []specs.Hook, state *specs.State) error {
 		cmd.Args = append(h.Args, string(s))
 		cmd.Env = h.Env
 		cmd.Stdin = strings.NewReader(string(s))
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("execute hook %s : %w", h.Path, err)
