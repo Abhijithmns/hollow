@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/Abhijithmns/hollow/internal/hooks"
@@ -212,7 +213,13 @@ func (c *Container) Init() error {
 
 }
 
-func (c *Container) Reexec() error {
+func (c *Container) Reexec() (err error) {
+		defer func() {
+		if err != nil {
+			logPath := filepath.Join(containerRootDir, c.State.ID, "error.log")
+			_ = os.WriteFile(logPath, []byte(err.Error()), 0644)
+		}
+	}()
 	// dail + listen before pivot_root before host paths are still reachable
 	initConn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, initSockFilename))
 	if err != nil {
@@ -243,7 +250,7 @@ func (c *Container) Reexec() error {
 	initConn.Close()
 
 
-	// 9. listen for start
+	//listen for start
 	contConn, err := listner.Accept()
 	if err != nil {
 		return fmt.Errorf("Accept container.sock: %w", err)
@@ -263,6 +270,12 @@ func (c *Container) Reexec() error {
 	contConn.Close()
 	listner.Close()
 
+	if pathEnv := getEnvValue(c.Spec.Process.Env, "PATH"); pathEnv != "" {
+		os.Setenv("PATH", pathEnv)
+	} else {
+		os.Setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+	}
+
 	if c.Spec.Hooks != nil {
 		if err := hooks.ExecHooks(c.Spec.Hooks.StartContainer, c.State); err != nil {
 			return fmt.Errorf("exec StartContainer hook: %w", err)
@@ -275,7 +288,10 @@ func (c *Container) Reexec() error {
 	}
 
 	args := c.Spec.Process.Args
-	env := os.Environ()
+	env := c.Spec.Process.Env
+	if len(env) == 0 {
+		env = os.Environ()
+	}
 	
 	if err := syscall.Exec(binary, args, env); err != nil {
 		return fmt.Errorf("execve(%s , %s , %v ) : %w", binary, args, env, err)
@@ -352,6 +368,15 @@ func (c *Container) canBeKilled() bool {
 	return c.State.Status == specs.StateCreated || c.State.Status == specs.StateRunning
 }
 
+func getEnvValue(env []string, key string) string {
+	prefix := key + "="
+	for _, i := range env {
+		if strings.HasPrefix(i, prefix) {
+			return strings.TrimPrefix(i, prefix)
+		}
+	}
+	return ""
+}
 func exists(ContainerID string) bool {
 	_, err := os.Stat(filepath.Join(containerRootDir, ContainerID))
 

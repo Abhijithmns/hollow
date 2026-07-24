@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -33,14 +32,17 @@ func ExecHooks(hooks []specs.Hook, state *specs.State) error {
 			ctx, cancel = context.WithTimeout(ctx, time.Duration(*h.Timeout) * time.Second) // takes the timeout from the config
 			defer cancel()
 		}
-		binary , err := exec.LookPath(h.Path)
+		binary, err := exec.LookPath(h.Path)
 		if err != nil {
 			return fmt.Errorf("find path of hook's binary : %w", err)
 		}
 
-		path := filepath.Dir(h.Path)
-		cmd := exec.CommandContext(ctx, binary, path)
-		cmd.Args = append(h.Args, string(s))
+		cmd := exec.CommandContext(ctx, binary)
+		if len(h.Args) > 1 {
+			cmd.Args = append([]string{binary}, h.Args[1:]...)
+		} else {
+			cmd.Args = []string{binary}
+		}
 		cmd.Env = h.Env
 		cmd.Stdin = strings.NewReader(string(s))
 		cmd.Stderr = os.Stderr
