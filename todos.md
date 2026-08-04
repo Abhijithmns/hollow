@@ -15,7 +15,7 @@ a simple oci-compliant container runtime written in go for learning how containe
 ### process isolation
 - [x] implement linux namespaces
 - [x] configure the root filesystem
-- [ ] configure mounts
+- [x] configure mounts
 - [ ] set the hostname and domain name
 
 ### security
