@@ -18,20 +18,20 @@ import (
 )
 
 const (
-	containerRootDir = "/var/lib/hollow/containers"
-	initSockFilename = "init.sock" // file names of the sockets will be used for IPC
+	containerRootDir      = "/var/lib/hollow/containers"
+	initSockFilename      = "init.sock" // file names of the sockets will be used for IPC
 	containerSockFilename = "container.sock"
 )
 
 type Container struct {
 	State *specs.State
-	Spec *specs.Spec // config
+	Spec  *specs.Spec // config
 }
 
 type NewContainerOpts struct {
-	ID string
+	ID     string
 	Bundle string
-	Spec *specs.Spec
+	Spec   *specs.Spec
 }
 
 // create a new cont
@@ -40,17 +40,17 @@ func New(opts *NewContainerOpts) (*Container, error) {
 		return nil, fmt.Errorf("container '%s' exists\n", opts.ID)
 	}
 
-	state := specs.State {
-		Version: specs.Version,
-		ID: opts.ID,
-		Bundle: opts.Bundle,
+	state := specs.State{
+		Version:     specs.Version,
+		ID:          opts.ID,
+		Bundle:      opts.Bundle,
 		Annotations: opts.Spec.Annotations,
-		Status: specs.StateCreating,
+		Status:      specs.StateCreating,
 	}
 
-	c  := Container {
+	c := Container{
 		State: &state,
-		Spec: opts.Spec,
+		Spec:  opts.Spec,
 	}
 	return &c, nil
 }
@@ -64,13 +64,13 @@ func (c *Container) Save() error {
 		return fmt.Errorf("Create container directory : %w", err)
 	}
 
-	state, err := json.Marshal(c.State) 
+	state, err := json.Marshal(c.State)
 	if err != nil {
 		return fmt.Errorf("Serialise container state : %w ", err)
 	}
 
 	if err := os.WriteFile(
-		filepath.Join(containerRootDir,c.State.ID,"state.json"),
+		filepath.Join(containerRootDir, c.State.ID, "state.json"),
 		state,
 		0666,
 	); err != nil {
@@ -84,7 +84,7 @@ func Load(id string) (*Container, error) {
 		filepath.Join(containerRootDir, id, "state.json"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Read state file: %w" , err)
+		return nil, fmt.Errorf("Read state file: %w", err)
 	}
 	var state *specs.State
 	if err := json.Unmarshal(s, &state); err != nil {
@@ -98,13 +98,13 @@ func Load(id string) (*Container, error) {
 		return nil, fmt.Errorf("Read config file: %w", err)
 	}
 	var spec *specs.Spec
-	if err := json.Unmarshal(config, &spec); err!= nil {
+	if err := json.Unmarshal(config, &spec); err != nil {
 		return nil, fmt.Errorf("unmarshall config: %w", err)
 	}
 
 	c := &Container{
 		State: state,
-		Spec: spec,
+		Spec:  spec,
 	}
 	return c, nil
 }
@@ -178,7 +178,7 @@ func (c *Container) Init() error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("reexec container process: %w", err)
 	}
-	
+
 	c.State.Pid = cmd.Process.Pid
 
 	// . relese container process
@@ -202,18 +202,18 @@ func (c *Container) Init() error {
 	// 10. receive ready
 	msg := string(b[:n])
 	if msg != "ready" {
-		return fmt.Errorf("expecting 'ready' but received '%s'",msg)
+		return fmt.Errorf("expecting 'ready' but received '%s'", msg)
 	}
 
 	c.State.Status = specs.StateCreated
-	
+
 	// 11. exit
 	return nil
 
 }
 
 func (c *Container) Reexec() (err error) {
-		defer func() {
+	defer func() {
 		if err != nil {
 			logPath := filepath.Join(containerRootDir, c.State.ID, "error.log")
 			_ = os.WriteFile(logPath, []byte(err.Error()), 0644)
@@ -246,22 +246,20 @@ func (c *Container) Reexec() (err error) {
 		}
 	}
 
-
 	if _, err := initConn.Write([]byte("ready")); err != nil {
 		return fmt.Errorf("Failed writing 'ready' : %w", err)
 	}
 	// close the connecting insted of defering
 	initConn.Close()
 
-
 	//listen for start
 	contConn, err := listner.Accept()
 	if err != nil {
 		return fmt.Errorf("Accept container.sock: %w", err)
 	}
-	
+
 	b := make([]byte, 128)
-	n , err :=  contConn.Read(b)
+	n, err := contConn.Read(b)
 	if err != nil {
 		return fmt.Errorf("Read bytes from container sock: %w", err)
 	}
@@ -286,7 +284,7 @@ func (c *Container) Reexec() (err error) {
 		}
 	}
 
-	binary , err := exec.LookPath(c.Spec.Process.Args[0])
+	binary, err := exec.LookPath(c.Spec.Process.Args[0])
 	if err != nil {
 		return fmt.Errorf("Unable to find path of user binary : %w", err)
 	}
@@ -296,7 +294,7 @@ func (c *Container) Reexec() (err error) {
 	if len(env) == 0 {
 		env = os.Environ()
 	}
-	
+
 	if err := syscall.Exec(binary, args, env); err != nil {
 		return fmt.Errorf("execve(%s , %s , %v ) : %w", binary, args, env, err)
 	}
@@ -304,14 +302,14 @@ func (c *Container) Reexec() (err error) {
 }
 
 func (c *Container) Start() error {
-    if c.Spec.Process == nil {
-	// nothing to do
+	if c.Spec.Process == nil {
+		// nothing to do
 		return nil
-    }
+	}
 
-    if !c.canBeStarted() {
+	if !c.canBeStarted() {
 		return fmt.Errorf("container cannot be started in current state (%s)", c.State.Status)
-    }
+	}
 
 	if c.Spec.Hooks != nil {
 		if err := hooks.ExecHooks(c.Spec.Hooks.Prestart, c.State); err != nil {
@@ -320,17 +318,17 @@ func (c *Container) Start() error {
 		}
 	}
 
-    conn, err := net.Dial("unix",filepath.Join(containerRootDir, c.State.ID, containerSockFilename),)
-    if err != nil {
+	conn, err := net.Dial("unix", filepath.Join(containerRootDir, c.State.ID, containerSockFilename))
+	if err != nil {
 		return fmt.Errorf("dial container sock: %w", err)
-    }
+	}
 
-    if _, err := conn.Write([]byte("start")); err != nil {
+	if _, err := conn.Write([]byte("start")); err != nil {
 		return fmt.Errorf("write 'start' msg to container sock: %w", err)
-    }
-    conn.Close()
+	}
+	conn.Close()
 
-    c.State.Status = specs.StateRunning
+	c.State.Status = specs.StateRunning
 
 	if c.Spec.Hooks != nil {
 		if err := hooks.ExecHooks(c.Spec.Hooks.Poststart, c.State); err != nil {
@@ -338,7 +336,7 @@ func (c *Container) Start() error {
 		}
 	}
 
-    return nil
+	return nil
 }
 
 func (c *Container) Kill(sig unix.Signal) error {
@@ -353,18 +351,19 @@ func (c *Container) Kill(sig unix.Signal) error {
 	c.State.Status = specs.StateStopped
 
 	if c.Spec.Hooks != nil {
-		if err := hooks.ExecHooks(c.Spec.Hooks.Poststart,c.State); err != nil {
+		if err := hooks.ExecHooks(c.Spec.Hooks.Poststart, c.State); err != nil {
 			return fmt.Errorf("Warning: failed to execute poststop hooks !")
 		}
 	}
-	return nil 
+	return nil
 }
 
+// loop through the mounts array in config.json for each entry create dest dir inside the pivot root fs then call mount at the last to actually attach it
 func (c *Container) configureMounts(rootfsPath string) error {
 	for _, mnt := range c.Spec.Mounts {
 		dest := filepath.Join(rootfsPath, mnt.Destination)
 
-		// handle mount types (reccursive or not)
+		// handle mount types (regular or bind mounts)
 		isBind := false
 		for _, opts := range mnt.Options {
 			if opts == "bind" || opts == "rbind" {
@@ -376,36 +375,72 @@ func (c *Container) configureMounts(rootfsPath string) error {
 		if isBind {
 			fih, err := os.Stat(mnt.Source)
 			if err != nil {
-				if err := os.MkdirAll(dest,0755); err != nil {
+				// source doesnt exist -> cant stat so fallback to assuming dir
+				if err := os.MkdirAll(dest, 0755); err != nil {
 					return fmt.Errorf("create bind mount directory %s : %w", dest, err)
 				}
-			} else if fih.IsDir() {
+			} else if fih.IsDir() { // src is a real dir => dest must also be one
 				if err := os.MkdirAll(dest, 0755); err != nil {
 					return fmt.Errorf("create bind mount target dir %s : %w", dest, err)
 				}
-			} else {
-				if err := os.MkdirAll(filepath.Dir(dest), 0755) ; err != nil {
+			} else { // src is a file => dest is also file
+				if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
 					return fmt.Errorf("create parent dir for bind mount target %s : %w", dest, err)
 				}
 				// check if it got created
-				f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644) 
+				f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
-					return fmt.Errorf("create bind mount target file %s : %w",dest, err)
+					return fmt.Errorf("create bind mount target file %s : %w", dest, err)
 				}
 				f.Close()
 			}
-			
+
 		} else {
 			if err := os.MkdirAll(dest, 0755); err != nil {
 				return fmt.Errorf("create mount target dir %s : %w", dest, err)
 			}
 		}
 
-		if err := unix.Mount(mnt.Source, dest, mnt.Type, 0,""); err != nil {
+		//handle flags
+		flags, data := parseMountOptions(mnt.Options)
+		if err := unix.Mount(mnt.Source, dest, mnt.Type, uintptr(flags), data); err != nil {
 			return fmt.Errorf("mount %s to %s (type %s): %w", mnt.Source, dest, mnt.Type, err)
 		}
 	}
 	return nil
+}
+
+func parseMountOptions(opt []string) (int, string) {
+	var flags int
+	var data []string
+	for _, opt := range opt {
+		// just handle the common ones
+		switch opt {
+		case "nosuid":
+			flags |= unix.MS_NOSUID
+		case "noexec":
+			flags |= unix.MS_NOEXEC
+		case "nodev":
+			flags |= unix.MS_NODEV
+		case "ro":
+			flags |= unix.MS_RDONLY
+		case "bind":
+			flags |= unix.MS_BIND
+		case "rbind":
+			flags |= unix.MS_BIND | unix.MS_REC
+		case "remount":
+			flags |= unix.MS_REMOUNT
+		case "strictatime":
+			flags |= unix.MS_STRICTATIME
+		case "noatime":
+			flags |= unix.MS_NOATIME
+		case "relatime":
+			flags |= unix.MS_RELATIME
+		default:
+			data = append(data, opt)
+		}
+	}
+	return flags, strings.Join(data, ",")
 }
 
 func (c *Container) canBeDeleted() bool {
@@ -434,5 +469,3 @@ func exists(ContainerID string) bool {
 
 	return err == nil
 }
-
-
