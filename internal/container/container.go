@@ -56,7 +56,6 @@ func New(opts *NewContainerOpts) (*Container, error) {
 }
 
 // Saving the state --> "/var/lib/hollow/containers/{ContainerID}/state.json"
-// a method for container
 func (c *Container) Save() error {
 	if err := os.MkdirAll(
 		filepath.Join(containerRootDir, c.State.ID),
@@ -232,6 +231,11 @@ func (c *Container) Reexec() (err error) {
 	}
 
 	rootfsPath := filepath.Join(c.State.Bundle, c.Spec.Root.Path)
+
+	if err := c.configureMounts(rootfsPath); err != nil {
+		return fmt.Errorf("configure mounts : %w", err)
+	}
+
 	if err := rootfs.Pivotroot(rootfsPath); err != nil {
 		return fmt.Errorf("configure rootfs: %w", err)
 	}
@@ -354,6 +358,54 @@ func (c *Container) Kill(sig unix.Signal) error {
 		}
 	}
 	return nil 
+}
+
+func (c *Container) configureMounts(rootfsPath string) error {
+	for _, mnt := range c.Spec.Mounts {
+		dest := filepath.Join(rootfsPath, mnt.Destination)
+
+		// handle mount types (reccursive or not)
+		isBind := false
+		for _, opts := range mnt.Options {
+			if opts == "bind" || opts == "rbind" {
+				isBind = true
+				break
+			}
+		}
+
+		if isBind {
+			fih, err := os.Stat(mnt.Source)
+			if err != nil {
+				if err := os.MkdirAll(dest,0755); err != nil {
+					return fmt.Errorf("create bind mount directory %s : %w", dest, err)
+				}
+			} else if fih.IsDir() {
+				if err := os.MkdirAll(dest, 0755); err != nil {
+					return fmt.Errorf("create bind mount target dir %s : %w", dest, err)
+				}
+			} else {
+				if err := os.MkdirAll(filepath.Dir(dest), 0755) ; err != nil {
+					return fmt.Errorf("create parent dir for bind mount target %s : %w", dest, err)
+				}
+				// check if it got created
+				f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0644) 
+				if err != nil {
+					return fmt.Errorf("create bind mount target file %s : %w",dest, err)
+				}
+				f.Close()
+			}
+			
+		} else {
+			if err := os.MkdirAll(dest, 0755); err != nil {
+				return fmt.Errorf("create mount target dir %s : %w", dest, err)
+			}
+		}
+
+		if err := unix.Mount(mnt.Source, dest, mnt.Type, 0,""); err != nil {
+			return fmt.Errorf("mount %s to %s (type %s): %w", mnt.Source, dest, mnt.Type, err)
+		}
+	}
+	return nil
 }
 
 func (c *Container) canBeDeleted() bool {
