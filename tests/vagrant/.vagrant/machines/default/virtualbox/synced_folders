@@ -1,0 +1,1 @@
+{"virtualbox":{"/hollow":{"guestpath":"/hollow","hostpath":"/home/abhijith/projects/hollow","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"/home/abhijith/projects/hollow/tests/vagrant","disabled":false,"__vagrantfile":true}}}

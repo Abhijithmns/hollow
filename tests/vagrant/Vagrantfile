@@ -1,0 +1,63 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+
+  # Hollow repository root -> /hollow inside the VM
+  config.vm.synced_folder "../..", "/hollow"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+    vb.cpus = "2"
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    set -e -x -o pipefail
+
+    # Update package lists and install packages
+    apt-get update
+
+    apt-get install -y \
+      git \
+      ca-certificates \
+      wget \
+      make \
+      vim \
+      gcc \
+      libseccomp-dev
+
+    # Install Go
+    if ! command -v go >/dev/null 2>&1; then
+      wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz \
+        -O /tmp/go.tar.gz
+
+      rm -rf /usr/local/go
+      tar -C /usr/local -xzf /tmp/go.tar.gz
+      rm /tmp/go.tar.gz
+
+      echo 'export PATH=/usr/local/go/bin:$PATH' \
+        > /etc/profile.d/go.sh
+    fi
+
+    export PATH=/usr/local/go/bin:$PATH
+
+    echo
+    echo "Hollow test VM ready?  :)"
+    echo
+
+    echo "Go:"
+    go version
+
+    echo
+    echo "Cgroup filesystem:"
+    stat -fc %T /sys/fs/cgroup
+
+    echo
+    echo "Cgroup controllers:"
+    cat /sys/fs/cgroup/cgroup.controllers
+
+    echo
+    echo "Cgroup mount:"
+    mount | grep cgroup || true
+
+    echo
+  SHELL
+end
