@@ -1,3 +1,5 @@
 hollow
 busybox/rootfs
 main.go.bak
+tests/vagrant/.vagrant/
+.vagrant/
