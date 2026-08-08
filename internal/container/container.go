@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/Abhijithmns/hollow/internal/cgroups"
 	"github.com/Abhijithmns/hollow/internal/hooks"
 	"github.com/Abhijithmns/hollow/internal/namespace"
 	"github.com/Abhijithmns/hollow/internal/rootfs"
@@ -130,6 +131,12 @@ func (c *Container) Delete(force bool) error {
 		return fmt.Errorf("delete container directory: %w", err)
 	}
 
+	if c.Spec.Linux != nil {
+		if err := cgroups.CleatItUp(c.State.ID); err != nil {
+			return fmt.Errorf("cleanup cgroups : %w", err)
+		}
+	}
+
 	if c.Spec.Hooks != nil {
 		if err := hooks.ExecHooks(c.Spec.Hooks.Poststop, c.State); err != nil {
 			return fmt.Errorf("exec poststop hook: %w", err)
@@ -180,6 +187,12 @@ func (c *Container) Init() error {
 	}
 
 	c.State.Pid = cmd.Process.Pid
+
+	if c.Spec.Linux!=nil {
+		if err := cgroups.Setup(c.State.ID, c.Spec.Linux.Resources, c.State.Pid); err != nil {
+			return fmt.Errorf("setup cgroups : %w", err)
+		}
+	}
 
 	// . relese container process
 	if err := cmd.Process.Release(); err != nil {
