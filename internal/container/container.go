@@ -258,6 +258,12 @@ func (c *Container) Reexec() (err error) {
 			return fmt.Errorf("set hostname: %w", err)
 		}
 	}
+	
+	if c.Spec.Domainname != "" {
+		if err := unix.Setdomainname([]byte(c.Spec.Domainname));err != nil {
+			return fmt.Errorf("set domainname : %w", err)
+		}
+	}
 
 	if _, err := initConn.Write([]byte("ready")); err != nil {
 		return fmt.Errorf("Failed writing 'ready' : %w", err)
