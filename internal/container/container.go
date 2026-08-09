@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Abhijithmns/hollow/internal/cgroups"
 	"github.com/Abhijithmns/hollow/internal/hooks"
@@ -130,6 +131,9 @@ func (c *Container) Delete(force bool) error {
 	); err != nil {
 		return fmt.Errorf("delete container directory: %w", err)
 	}
+
+	// give the kernel a moment to actually reap the process before touching cgroups
+	time.Sleep(200 * time.Millisecond)
 
 	if c.Spec.Linux != nil {
 		if err := cgroups.CleatItUp(c.State.ID); err != nil {
