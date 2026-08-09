@@ -12,10 +12,20 @@ import (
 const cgroupRoot = "/sys/fs/cgroup"
 
 func Setup(id string, resources *specs.LinuxResources, pid int) error {
-	cgroupPath := filepath.Join(cgroupRoot, "hollow", id)
+	parentPath := filepath.Join(cgroupRoot,"hollow");
+	cgroupPath := filepath.Join(parentPath, id)
 
-	if err := os.MkdirAll(cgroupPath, 0755); err != nil {
-		return fmt.Errorf("create cgroup dir: %w", err);
+	if err := os.MkdirAll(parentPath, 0755); err != nil {
+		return fmt.Errorf("create parent cgroup dir: %w", err);
+	}
+
+	// enable controllers at parent level (/hollow) so that (/hollow/test) can use it 
+	if err := os.WriteFile(filepath.Join(parentPath, "cgroup.subtree_control"), []byte("+memory +pids"), 0644); err != nil {
+		return fmt.Errorf("enable controllers: %w", err);
+	}
+
+	if err := os.MkdirAll(cgroupPath, 0644); err != nil {
+		return fmt.Errorf("create cgroup dir : %w", err)
 	}
 	
 	if resources != nil {
