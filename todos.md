@@ -1,8 +1,6 @@
 # hollow - an oci container runtime in go
 
-a simple oci-compliant container runtime written in go for learning how containers work under the hood.
-
-## roadmap
+a simple oci-compliant container runtime written in go to learn how containers work :)
 
 ### runtime
 - [x] build the cli interface
@@ -16,7 +14,10 @@ a simple oci-compliant container runtime written in go for learning how containe
 - [x] implement linux namespaces
 - [x] configure the root filesystem
 - [x] configure mounts
-- [ ] set the hostname and domain name
+- [x] set the hostname and domain name
+
+### resource management
+- [x] implement cgroups v2 (memory, pids limits — verified via dmesg fork-rejection under real limits)
 
 ### security
 - [ ] configure uid/gid mappings
@@ -24,16 +25,14 @@ a simple oci-compliant container runtime written in go for learning how containe
 - [ ] configure kernel parameters (`sysctl`)
 - [ ] configure resource limits (`rlimits`)
 
-### resource management
-- [ ] implement cgroups
-
 ### runtime features
 - [ ] wire up a console/tty
 - [ ] write the container pid file
 - [ ] adjust the oom score
+- [ ] handle pid 1 / zombie reaping (init process for multi-process containers)
 - [ ] implement the oci `features` api
 
-### if everything works 
+### if everything works
 - [ ] pass the oci runtime specification test suite
 - [ ] use hollow with docker/containerd
 - [ ] run doom
