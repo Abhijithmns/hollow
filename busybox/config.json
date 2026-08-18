@@ -138,6 +138,9 @@
 			{
 				"type": "mount"
 			},
+            {
+                "type": "user"
+            },
 			{
 				"type": "cgroup"
 			}
